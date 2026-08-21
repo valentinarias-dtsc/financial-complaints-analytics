@@ -1,7 +1,28 @@
-SELECT 
+\set ON_ERROR_STOP on
+
+-- Exploratory audit of the raw_complaints table.
+-- This script is read-only: each section answers a data-quality question before
+-- cleaning rules are defined or the analytical layer is built.
+
+
+-- =============================================================================
+-- 1. ROW AND IDENTIFIER INTEGRITY
+-- =============================================================================
+-- Compares the total row count with the number of unique complaint IDs. If both
+-- values match, there is no evidence of duplicated IDs in the loaded data.
+
+SELECT
     COUNT(*) AS total_rows,
     COUNT(DISTINCT(complaint_id)) unique_ids
 FROM raw_complaints;
+
+
+-- =============================================================================
+-- 2. MISSING-VALUE PROFILE
+-- =============================================================================
+-- Counts NULLs, empty strings, and the text value 'None' in prioritized columns.
+-- Counts and percentages show the impact before deciding whether a value should
+-- be filled, retained as not applicable, or excluded.
 
 WITH missing_counts AS (
 
@@ -162,6 +183,13 @@ CROSS JOIN total_rows tr
 ORDER BY missing_pct DESC, missing_count DESC;
 
 
+-- =============================================================================
+-- 3. DATE QUALITY AND COVERAGE
+-- =============================================================================
+-- Checks the observed date boundaries and counts dates outside the analytical
+-- period. date_received defines the scope; date_sent_to_company is reviewed
+-- separately.
+
 SELECT
     MIN(date_received::date) AS min_received_date,
     MAX(date_received::date) AS max_received_date,
@@ -176,10 +204,16 @@ SELECT
     MAX(date_sent_to_company::date) AS max_sent_date,
     COUNT(*) FILTER (
         WHERE date_sent_to_company::date NOT BETWEEN DATE '2023-01-01'
-                                         AND DATE '2025-12-31'
+                                                 AND DATE '2025-12-31'
     ) AS sent_out_of_range
 FROM raw_complaints;
 
+
+-- =============================================================================
+-- 4. CATEGORICAL NORMALIZATION IMPACT
+-- =============================================================================
+-- Compares raw cardinality with LOWER(TRIM()). A difference means normalization
+-- would merge labels currently stored as separate categories.
 
 WITH cardinalities AS (
     SELECT
@@ -229,28 +263,56 @@ WITH cardinalities AS (
     FROM raw_complaints
 )
 
-SELECT 
+SELECT
     column_name,
     cardinality,
     cardinality_norm,
-    CASE 
+    CASE
         WHEN cardinality = cardinality_norm THEN 1
         ELSE 0
     END AS equal
 FROM cardinalities
 ORDER BY equal;
 
+-- Identifies original variants that would be grouped under the same normalized
+-- company name.
+WITH normalized_companies AS (
+    SELECT
+        LOWER(TRIM(company)) AS company_norm,
+        company
+    FROM raw_complaints
+)
+SELECT
+    company_norm,
+    COUNT(DISTINCT company) AS variant_count,
+    ARRAY_AGG(DISTINCT company ORDER BY company) AS original_company_names
+FROM normalized_companies
+GROUP BY company_norm
+HAVING COUNT(DISTINCT company) > 1
+ORDER BY variant_count DESC, company_norm;
 
-SELECT 
-    DISTINCT timely_response
+
+-- =============================================================================
+-- 5. SMALL CATEGORICAL DOMAINS
+-- =============================================================================
+-- Lists all values in low-cardinality fields to detect unexpected categories
+-- and prepare simple validation rules.
+
+SELECT DISTINCT
+    timely_response
 FROM raw_complaints;
 
-SELECT 
-    DISTINCT submitted_via
+SELECT DISTINCT
+    submitted_via
 FROM raw_complaints;
 
 
-SELECT 
+-- =============================================================================
+-- 6. PRODUCT AND ISSUE TAXONOMY
+-- =============================================================================
+-- Reviews complaint volume by product and product-sub-product combinations.
+
+SELECT
     product,
     COUNT(*) AS frequency
 FROM raw_complaints
@@ -263,6 +325,40 @@ SELECT
 FROM raw_complaints
 GROUP BY product, sub_product;
 
+-- The following distributions help explain issue granularity and when sub_issue
+-- provides additional detail.
+SELECT
+    issue,
+    COUNT(*) AS complaint_count
+FROM raw_complaints
+GROUP BY issue
+ORDER BY complaint_count DESC, issue;
+
+SELECT
+    issue,
+    sub_issue,
+    COUNT(*) AS complaint_count
+FROM raw_complaints
+GROUP BY issue, sub_issue
+ORDER BY complaint_count DESC, issue, sub_issue;
+
+-- If this query returns rows, the same issue belongs to more than one product;
+-- therefore, the product-issue relationship is not strictly one-to-many.
+SELECT
+    issue,
+    COUNT(DISTINCT product) AS product_count,
+    ARRAY_AGG(DISTINCT product ORDER BY product) AS products
+FROM raw_complaints
+GROUP BY issue
+HAVING COUNT(DISTINCT product) > 1
+ORDER BY product_count DESC, issue;
+
+
+-- =============================================================================
+-- 7. HISTORICAL CREDIT-CARD TAXONOMY TRANSITION
+-- =============================================================================
+-- Compares the historical combined category with Credit card by month to make
+-- the taxonomy change during 2023 visible.
 
 SELECT
     DATE_TRUNC('month', date_received::date) AS month,
@@ -272,3 +368,37 @@ FROM raw_complaints
 WHERE product IN ('Credit card or prepaid card', 'Credit card')
 GROUP BY month, product
 ORDER BY month, product;
+
+
+-- =============================================================================
+-- 8. ROWS POTENTIALLY AFFECTED BY CLEANING
+-- =============================================================================
+-- Inspects rows without a usable product, sub_product, or issue. sub_issue is
+-- shown for context but is excluded from the flag because it may not apply.
+
+WITH flagged_complaints AS (
+    SELECT
+        date_received,
+        company,
+        product,
+        sub_product,
+        issue,
+        sub_issue,
+        timely_response,
+        submitted_via,
+        CASE
+            WHEN LOWER(TRIM(product)) IS NULL
+              OR LOWER(TRIM(product)) IN ('', 'none')
+              OR LOWER(TRIM(sub_product)) IS NULL
+              OR LOWER(TRIM(sub_product)) IN ('', 'none')
+              OR LOWER(TRIM(issue)) IS NULL
+              OR LOWER(TRIM(issue)) IN ('', 'none')
+            THEN 1
+            ELSE 0
+        END AS null_flag
+    FROM raw_complaints
+)
+SELECT *
+FROM flagged_complaints
+WHERE null_flag = 1
+ORDER BY date_received, company;
