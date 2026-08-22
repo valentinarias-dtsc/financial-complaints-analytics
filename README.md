@@ -1,74 +1,123 @@
 # Financial Complaints Analytics
 
-> An end-to-end data analytics project for exploring consumer complaints in the US financial services industry.
+> A reproducible SQL and Power BI analytics project for monitoring consumer complaints in U.S. banking and payments.
 
-**Project status:** Planning — MVP scope defined, implementation not started.
+**Project status:** Active development — reproducible extraction, raw PostgreSQL loading, and an initial SQL data audit are implemented. Staging transformations, the analytical mart, Power BI report, and published findings remain planned.
 
 ## Project overview
 
 Financial institutions receive complaints across products, service channels, and operational processes. Turning those records into reliable management information can help customer operations and compliance teams identify where complaint volume is concentrated, which issues are growing, and where response performance may require attention.
 
-This project will analyze public complaint records from the [Consumer Financial Protection Bureau (CFPB)](https://www.consumerfinance.gov/data-research/consumer-complaints/). The goal is to build a small, reproducible SQL analytics workflow and a clear Power BI report—not a predictive model or production data platform.
+This project uses public records from the [Consumer Financial Protection Bureau (CFPB) Consumer Complaint Database](https://www.consumerfinance.gov/data-research/consumer-complaints/) to build a focused analytics workflow in PostgreSQL and a planned two-page Power BI report. The objective is monitoring and prioritization—not complaint prediction, causal evaluation, or a production data platform.
 
-The project is intentionally scoped as a four-week portfolio MVP. It prioritizes business reasoning, data quality, practical SQL, and clear communication over architectural complexity. Python, notebooks, cloud services, and advanced BI features are deliberately excluded from the initial version.
+The MVP is deliberately limited to practical SQL, transparent data-quality decisions, basic Power Query and DAX, and concise analytical communication. Python, notebooks, cloud services, and advanced BI features are outside the initial scope.
 
 ## Business objective
 
-The project will simulate an analytics request from a **Customer Operations or Compliance Manager** who needs to understand:
+The project frames an analytics request from a Customer Operations or Compliance Manager who needs to understand:
 
-- how complaint volume and composition are changing;
+- how complaint volume and composition change over time;
 - which products and issues account for most complaints;
-- which issues are growing most rapidly; and
-- how timely company responses vary across relevant segments.
+- which product–issue combinations are growing most rapidly;
+- how timely response rates vary across relevant segments; and
+- which high-volume areas warrant further investigation.
 
-The analysis is intended to support prioritization and monitoring. It will not be used to rank the overall quality of financial institutions or make causal claims.
+Complaint counts are not used to rank the overall quality of financial institutions. The CFPB data does not include customer or transaction exposure, so complaint volume alone cannot establish a complaint rate or service-quality difference.
 
-## Questions to answer
+## MVP scope
 
-1. How has monthly complaint volume changed during the selected period?
-2. Which products and issues account for most complaint volume?
-3. Which product–issue combinations are growing most rapidly?
-4. How does the timely response rate vary by company, product, and submission channel?
-5. Which high-volume areas should operations or compliance teams investigate first?
-
-## Initial scope
-
-- **Period:** 2022–2025, using four complete calendar years.
+- **Period:** 2023-01-01 through 2025-12-31, using three complete calendar years.
 - **Geography:** United States.
 - **Source:** CFPB Consumer Complaint Database.
-- **Product focus:** three or four banking and payments product families, selected after the initial data audit.
 - **Unit of analysis:** one published consumer complaint.
-- **Dashboard:** two report pages with a limited set of business KPIs.
+- **Domain:** consumer banking and payments.
+- **Reporting target:** two Power BI pages with a limited set of business KPIs.
 
-The full CFPB database will not automatically be included. Filtering the period and product families will keep processing and dashboard performance manageable while preserving a meaningful business problem.
+The extractor retains four CFPB source categories:
 
-## Planned workflow
+1. `Credit card or prepaid card`
+2. `Credit card`
+3. `Checking or savings account`
+4. `Money transfer, virtual currency, or money service`
+
+The planned analytical layer will report three product families: credit cards, checking or savings accounts, and money transfer, virtual currency, or money services. Historical records from `Credit card or prepaid card` will be assigned to the credit-card family only when the sub-product identifies a general-purpose, charge, or store credit card. Historical prepaid sub-products will be excluded from the three-family MVP. This harmonization is planned for staging and is not yet implemented.
+
+## Implementation status
+
+| Component | Status | Repository evidence |
+|---|---|---|
+| Scope and source-category selection | Implemented | Fixed dates, product filters, and extraction partitions in `scripts/download_data.ps1` |
+| Reproducible CFPB extraction | Implemented | PowerShell orchestration with `curl.exe`, temporary files, response checks, date-boundary validation, duplicate-ID checks, SHA-256 hashes, and an extraction manifest |
+| Raw PostgreSQL schema and reload | Implemented | `sql/01_load_raw_data.sql` creates `raw_complaints`, atomically reloads eight CSV partitions, and reconciles row and distinct-ID counts |
+| Initial raw-data audit | Implemented | `sql/02_data_audit.sql` profiles identifiers, missing values, dates, categorical normalization, taxonomy, and potentially affected rows |
+| Staging and taxonomy harmonization | Planned | Cleaning rules will be finalized from the audit evidence |
+| Quality checks and reporting mart | Planned | Record reconciliation, reusable analytical fields, and a calendar table |
+| Power BI report and DAX measures | Planned | Two report pages and approximately six reusable measures |
+| Findings and recommendations | Planned | Results will be published only after the analytical layer and metrics are validated |
+
+## Data workflow
 
 ```mermaid
 flowchart TD
-    A[Define scope and KPIs] --> B[Download CFPB data]
-    B --> C[Load raw data into PostgreSQL]
-    C --> D[Audit and clean with SQL]
-    D --> E[Validate and create reporting mart]
-    E --> F[Connect with minimal Power Query]
-    F --> G[Build two-page Power BI report]
-    G --> H[Document insights and recommendations]
+    A[CFPB CSV export] --> B[PowerShell and curl extraction]
+    B --> C[Raw CSV partitions and manifest]
+    C --> D[PostgreSQL raw table]
+    D --> E[SQL data audit]
+    E --> F[Planned staging and validation]
+    F --> G[Planned reporting mart]
+    G --> H[Planned Power BI report]
 ```
 
-## Planned technology stack
+Implemented steps preserve the source values in a text-based raw table so that type conversion, normalization, and exclusions remain explicit downstream decisions.
 
-| Area | Technology | Intended use |
+## Reproduce the implemented workflow
+
+### Requirements
+
+- Windows PowerShell or PowerShell with access to `curl.exe`.
+- PostgreSQL with the `psql` command-line client.
+- Network access to the CFPB complaint search API.
+
+Run commands from the repository root so the relative `data/raw/` paths used by `psql` resolve correctly.
+
+### 1. Download and validate the source partitions
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\download_data.ps1
+```
+
+The script uses eight fixed, non-overlapping date windows to remain below the CFPB CSV export limit. It writes validated files to `data/raw/` and creates `extraction_manifest.csv` with partition dates, row counts, file sizes, SHA-256 hashes, and extraction timestamps. Existing CSV files are validated and retained by default; pass `-Force` to rebuild them.
+
+### 2. Create and reload the raw table
+
+```powershell
+psql -d <database_name> -f sql/01_load_raw_data.sql
+```
+
+All source columns are initially stored as `TEXT`. The load runs inside a transaction, truncates the existing raw table, imports all eight partitions with `\copy`, and finishes with a row-count and distinct-identifier reconciliation query.
+
+### 3. Run the initial audit
+
+```powershell
+psql -d <database_name> -f sql/02_data_audit.sql
+```
+
+The audit script is read-only. It evaluates complaint-ID integrity, missing-value patterns, received and sent date coverage, the impact of text normalization, low-cardinality domains, product and issue relationships, the 2023 credit-card taxonomy transition, and records potentially affected by future cleaning rules.
+
+Source CSVs and generated manifests are intentionally excluded from version control. Results depend on the CFPB export returned when the extractor is run, even though the filters and date windows are fixed.
+
+## Technology responsibilities
+
+| Area | Technology | Responsibility |
 |---|---|---|
-| Data ingestion | PostgreSQL `\copy` or documented import | Load the filtered CSV without altering the source values |
-| Data storage | PostgreSQL | Preserve raw data and store the clean analytical layers |
-| Data audit and cleaning | SQL | Profile, standardize, filter, and validate the complaint records |
-| Analytical modeling | SQL | Create the reporting mart and calculate reusable business fields |
-| Power Query | Power BI connector | Connect to PostgreSQL, select columns, and verify data types |
-| Reporting | Power BI and basic DAX | Build the executive and operational report pages |
-| Version control | Git and GitHub | Track code, queries, documentation, and project decisions |
-| Documentation | Markdown | Explain methodology, metric definitions, findings, and limitations |
+| Extraction | PowerShell and `curl.exe` | Build reproducible CFPB requests, partition downloads, validate files, and generate the manifest |
+| Raw loading | PostgreSQL `psql` and `\copy` | Load validated CSV partitions without transforming source values |
+| Audit and transformation | SQL | Profile quality, define cleaning decisions, harmonize taxonomy, validate records, and build the reporting mart |
+| Power Query | Power BI PostgreSQL connector | Connect to the mart, select columns, verify types, and apply minor presentation adjustments |
+| Reporting | Power BI and basic DAX | Define reusable measures and present executive and operational views |
+| Version control and documentation | Git, GitHub, and Markdown | Track code, decisions, methodology, metric definitions, findings, and limitations |
 
-Python, notebooks, and Excel are not required for the MVP. Transformations will be completed in PostgreSQL before the data reaches Power BI, avoiding duplicated logic and unnecessary Power Query complexity.
+Important transformation logic will remain in PostgreSQL rather than being duplicated in Power Query.
 
 ## Planned analytical outputs
 
@@ -81,21 +130,7 @@ Python, notebooks, and Excel are not required for the MVP. Transformations will 
 - Complaint distribution by product and issue.
 - Narrative availability rate.
 
-### SQL audit, cleaning, and analysis
-
-The SQL portion will cover the complete preparation and analysis workflow using practical junior analyst skills:
-
-- source profiling and duplicate detection;
-- null and category checks;
-- text and date standardization;
-- filtering and grouping;
-- conditional aggregations;
-- `CASE WHEN` segmentation;
-- simple common table expressions;
-- joins with a calendar table; and
-- one or two window-function examples for period comparisons or Pareto analysis.
-
-Advanced procedures, dynamic SQL, recursive queries, and database optimization are outside the MVP.
+Metric definitions, denominators, filters, and caveats will be documented before results are presented.
 
 ### Power BI report
 
@@ -115,79 +150,61 @@ Advanced procedures, dynamic SQL, recursive queries, and database optimization a
 - high-volume and fast-growing issues; and
 - company, product, and channel filters.
 
-The report will use a single analytical mart and a calendar table. Power Query will be limited to connection and presentation-level adjustments, while DAX will be limited to approximately six reusable measures.
+The report is planned around one analytical mart and a calendar table. Power Query will be limited to connection and presentation-level adjustments, while DAX will be limited to approximately six reusable measures.
 
-## Planned deliverables
-
-1. PostgreSQL scripts for raw data loading, auditing, cleaning, validation, and analytical modeling.
-2. A documented data audit describing source quality and the resulting cleaning decisions.
-3. A two-page Power BI report connected to the analytical mart.
-4. A KPI dictionary describing definitions, calculation logic, and caveats.
-5. A concise analytical summary with approximately five findings and three actionable recommendations.
-6. Documentation explaining data quality decisions, limitations, and how to reproduce the project.
-
-## Planned repository structure
+## Repository structure
 
 ```text
 financial-complaints-analytics/
 ├── data/
-│   └── README.md
+│   └── raw/                         # Generated CSV partitions; ignored by Git
+├── scripts/
+│   └── download_data.ps1            # Implemented CFPB extraction and validation
 ├── sql/
-│   ├── 01_create_raw_table.sql
-│   ├── 02_data_audit.sql
-│   ├── 03_clean_staging.sql
-│   ├── 04_quality_checks.sql
-│   ├── 05_reporting_mart.sql
-│   └── 06_business_analysis.sql
-├── powerbi/
-│   └── README.md
-├── docs/
-│   ├── data_audit.md
-│   ├── data_dictionary.md
-│   ├── kpi_dictionary.md
-│   └── findings.md
-├── images/
+│   ├── 01_load_raw_data.sql         # Implemented raw schema and reload
+│   └── 02_data_audit.sql            # Implemented read-only audit
+├── .gitignore
+├── LICENSE
 └── README.md
 ```
 
-The source dataset and generated data files will not be committed to the repository. The `data/README.md` file will document how to obtain them.
+Additional SQL, documentation, Power BI, and image artifacts will be added as their corresponding project stages are implemented.
 
-## Four-week roadmap
+## Delivery roadmap
 
-| Week | Focus | Planned result |
+| Stage | Status | Intended result |
 |---|---|---|
-| 1 | Scope, download, PostgreSQL load, and SQL audit | Approved data contract and documented source profile |
-| 2 | SQL cleaning, validation, and business analysis | Validated staging layer and reporting mart |
-| 3 | KPI definitions and Power BI | Functional two-page report |
-| 4 | Validation, findings, documentation, and presentation | Portfolio-ready MVP |
+| Scope, extraction, raw loading, and initial audit | In progress | Reproducible raw layer and evidence-based cleaning decisions |
+| SQL cleaning, validation, and business analysis | Planned | Validated staging layer and reporting mart |
+| KPI definitions and Power BI | Planned | Functional two-page report with reconciled measures |
+| Findings, limitations, and presentation | Planned | Concise analytical narrative supported by validated outputs |
+
+The roadmap communicates sequence rather than a delivery guarantee. Scope may be adjusted when the data audit identifies a material quality or interpretation constraint.
 
 ## Quality and interpretation safeguards
 
-The project will explicitly validate:
+The completed workflow is intended to validate:
 
 - uniqueness of complaint identifiers;
 - valid date ranges;
 - required values and category consistency;
-- record counts between the source file, raw table, staging layer, and reporting mart;
+- record counts across extraction, raw, staging, and mart layers;
 - metric reconciliation between SQL and Power BI; and
 - minimum-volume thresholds for company comparisons.
 
-Complaint counts must be interpreted carefully. The dataset does not provide the number of customers or transactions handled by each company. A larger complaint count therefore does not prove that a company has a higher true complaint rate or lower service quality.
+The source has important interpretation limits. Complaints are published records rather than a representative sample of all customer experiences. Company comparisons lack exposure denominators such as customer or transaction counts. Taxonomy changes, optional narratives, submission behavior, and publication rules may also affect observed patterns. Findings will therefore be presented as descriptive signals for monitoring and investigation, not causal evidence.
 
 ## Out of scope for the MVP
 
 - Cloud data warehouses.
 - dbt, Airflow, or orchestration platforms.
 - Python analysis and Jupyter notebooks.
-- Automated API ingestion.
 - Machine learning or complaint prediction.
 - Advanced natural language processing.
 - Census or external demographic enrichment.
 - Excel-based analysis.
 - Advanced Power Query or DAX.
 - Real-time dashboards.
-
-These items may be considered only after the initial version is complete and documented.
 
 ## Data source
 
