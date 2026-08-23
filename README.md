@@ -2,7 +2,7 @@
 
 > A reproducible SQL and Power BI analytics project for monitoring consumer complaints in U.S. banking and payments.
 
-**Project status:** Active development — reproducible extraction, raw PostgreSQL loading, and an initial SQL data audit are implemented. Staging transformations, the analytical mart, Power BI report, and published findings remain planned.
+**Project status:** Active development — reproducible extraction, raw PostgreSQL loading, and a documented SQL data audit are implemented. Staging transformations, the analytical mart, Power BI report, and published business findings remain planned.
 
 ## Project overview
 
@@ -49,7 +49,7 @@ The planned analytical layer will report three product families: credit cards, c
 | Scope and source-category selection | Implemented | Fixed dates, product filters, and extraction partitions in `scripts/download_data.ps1` |
 | Reproducible CFPB extraction | Implemented | PowerShell orchestration with `curl.exe`, temporary files, response checks, date-boundary validation, duplicate-ID checks, SHA-256 hashes, and an extraction manifest |
 | Raw PostgreSQL schema and reload | Implemented | `sql/01_load_raw_data.sql` creates `raw_complaints`, atomically reloads eight CSV partitions, and reconciles row and distinct-ID counts |
-| Initial raw-data audit | Implemented | `sql/02_data_audit.sql` profiles identifiers, missing values, dates, categorical normalization, taxonomy, and potentially affected rows |
+| SQL data audit and evidence | Implemented | `sql/02_data_audit.sql` persists six audit views and exports five compact CSV artifacts; [the audit report](docs/data_audit.md) documents results and staging decisions |
 | Staging and taxonomy harmonization | Planned | Cleaning rules will be finalized from the audit evidence |
 | Quality checks and reporting mart | Planned | Record reconciliation, reusable analytical fields, and a calendar table |
 | Power BI report and DAX measures | Planned | Two report pages and approximately six reusable measures |
@@ -102,7 +102,9 @@ All source columns are initially stored as `TEXT`. The load runs inside a transa
 psql -d <database_name> -f sql/02_data_audit.sql
 ```
 
-The audit script is read-only. It evaluates complaint-ID integrity, missing-value patterns, received and sent date coverage, the impact of text normalization, low-cardinality domains, product and issue relationships, the 2023 credit-card taxonomy transition, and records potentially affected by future cleaning rules.
+The audit script does not update or delete `raw_complaints`. It evaluates complaint-ID integrity, missing-value patterns, received and sent date coverage, the impact of text normalization, low-cardinality domains, product and issue relationships, the 2023 credit-card taxonomy transition, and records potentially affected by future cleaning rules. It recreates six materialized audit views and exports five compact CSV snapshots to `data/audit/`.
+
+The published audit reconciles 525,156 raw rows to the same number of distinct complaint IDs. It quantifies 2,775 records for planned exclusion and establishes an expected staging population of 522,381 complaints. See the [data audit report](docs/data_audit.md) for the evidence, interpretation, and derived cleaning decisions. These figures describe data preparation; business findings remain pending.
 
 Source CSVs and generated manifests are intentionally excluded from version control. Results depend on the CFPB export returned when the extractor is run, even though the filters and date windows are fixed.
 
@@ -157,7 +159,10 @@ The report is planned around one analytical mart and a calendar table. Power Que
 ```text
 financial-complaints-analytics/
 ├── data/
-│   └── raw/                         # Generated CSV partitions; ignored by Git
+│   ├── audit/                       # Published compact audit evidence
+│   └── raw/                         # Generated source partitions; ignored by Git
+├── docs/
+│   └── data_audit.md                # Implemented audit results and decisions
 ├── scripts/
 │   └── download_data.ps1            # Implemented CFPB extraction and validation
 ├── sql/
@@ -174,7 +179,7 @@ Additional SQL, documentation, Power BI, and image artifacts will be added as th
 
 | Stage | Status | Intended result |
 |---|---|---|
-| Scope, extraction, raw loading, and initial audit | In progress | Reproducible raw layer and evidence-based cleaning decisions |
+| Scope, extraction, raw loading, and documented audit | Completed | Reproducible raw layer and evidence-based cleaning decisions |
 | SQL cleaning, validation, and business analysis | Planned | Validated staging layer and reporting mart |
 | KPI definitions and Power BI | Planned | Functional two-page report with reconciled measures |
 | Findings, limitations, and presentation | Planned | Concise analytical narrative supported by validated outputs |
