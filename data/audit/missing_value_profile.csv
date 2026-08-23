@@ -1,0 +1,14 @@
+column_name,missing_rows,missing_pct
+company_public_response,310544,59.13
+consumer_complaint_narrative,221491,42.18
+sub_issue,115938,22.08
+state,5450,1.04
+company,0,0.00
+company_response_to_consumer,0,0.00
+complaint_id,0,0.00
+date_received,0,0.00
+issue,5,0.00
+product,0,0.00
+sub_product,5,0.00
+submitted_via,0,0.00
+timely_response,0,0.00

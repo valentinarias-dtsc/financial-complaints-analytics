@@ -1,0 +1,7 @@
+field_name,raw_distinct_values,normalized_distinct_values,merged_categories
+company,1268,1265,3
+company_response_to_consumer,5,5,0
+issue,44,44,0
+product,4,4,0
+state,62,62,0
+sub_product,24,24,0

@@ -1,0 +1,7 @@
+cleaning_action,action_group,affected_rows
+exclude_historical_prepaid,exclude,2769
+exclude_invalid_product_sub_product_pair,exclude,1
+exclude_missing_required_classification,exclude,5
+keep_current_credit_card,keep,187840
+keep_other_in_scope_product,keep,302000
+map_historical_credit_to_credit_card,map_and_keep,32541

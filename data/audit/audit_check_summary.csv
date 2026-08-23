@@ -1,0 +1,13 @@
+check_name,observed_value,expected_condition,status
+cleaning_action_reconciliation_gap,0,= 0,PASS
+company_categories_merged_by_normalization,3,review source-label variants before using normalized company keys,REVIEW
+duplicate_complaint_ids,0,= 0,PASS
+historical_credit_rows_to_map,32541,> 0; quantified for staging,PASS
+historical_prepaid_rows_to_exclude,2769,> 0; quantified for staging,PASS
+invalid_date_received_format,0,= 0,PASS
+invalid_date_sent_format,0,= 0,PASS
+invalid_product_sub_product_pairs,1,= 0; otherwise exclude from analytical staging,REVIEW
+invalid_timely_response,0,= 0,PASS
+missing_complaint_ids,0,= 0,PASS
+missing_required_classification,5,= 0; otherwise exclude from analytical staging,REVIEW
+received_dates_outside_period,0,= 0,PASS
