@@ -113,7 +113,7 @@ The published audit reconciles 525,156 raw rows to the same number of distinct c
 psql -d <database_name> -f sql/03_clean_staging.sql
 ```
 
-The idempotent script recreates `stg_complaints`, casts date and response fields, implements the audited taxonomy mapping and exclusions, preserves source labels, and derives `company_key` and `has_narrative`. It ends with a row and distinct-ID reconciliation query.
+The idempotent script recreates `stg_complaints`, casts date and response fields, implements the audited taxonomy mapping and exclusions, preserves the source company label, consolidates its three audited casing variants in `company_name`, and derives `has_narrative`. It ends with a row and distinct-ID reconciliation query.
 
 ### 5. Run staging quality checks
 

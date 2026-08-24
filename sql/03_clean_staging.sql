@@ -76,17 +76,23 @@ classified AS (
             ELSE NULL
         END AS analytical_product,
 
+        -- Consolidate the three company casing variants found in the audit.
+        -- All other source labels remain unchanged for traceability.
+        CASE company
+            WHEN 'ATM OPS INC' THEN 'ATM OPS Inc'
+            WHEN 'FIRST TECHNOLOGY FEDERAL CREDIT UNION'
+                THEN 'First Technology Federal Credit Union'
+            WHEN 'GLOBAL CREDIT UNION' THEN 'Global Credit Union'
+            ELSE company
+        END AS company_name,
+
         -- Narrative text is optional and is not imputed. This flag supports
         -- reporting on narrative availability without altering source content.
         CASE
             WHEN NULLIF(TRIM(consumer_complaint_narrative), '') IS NOT NULL
                 THEN TRUE
             ELSE FALSE
-        END AS has_narrative,
-
-        -- Preserve the source company label while providing a conservative key
-        -- for grouping casing variants identified during the data audit.
-        LOWER(TRIM(company)) AS company_key
+        END AS has_narrative
 
     FROM prepared
 )
@@ -100,7 +106,7 @@ SELECT
     issue,
     sub_issue,
     company,
-    company_key,
+    company_name,
     submitted_via,
     date_sent_to_company,
     company_response_to_consumer,

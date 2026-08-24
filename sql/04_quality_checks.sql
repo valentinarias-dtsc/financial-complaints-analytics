@@ -153,20 +153,6 @@ WITH quality_checks AS (
     UNION ALL
 
     SELECT
-        'missing_company_key',
-        COUNT(*)::BIGINT,
-        0::BIGINT,
-        CASE
-            WHEN COUNT(*) = 0 THEN 'PASS'
-            ELSE 'FAIL'
-        END
-    FROM stg_complaints
-    WHERE company_key IS NULL
-       OR company_key IN ('', 'none')
-
-    UNION ALL
-
-    SELECT
         'missing_timely_response',
         COUNT(*)::BIGINT,
         0::BIGINT,
@@ -280,8 +266,10 @@ WITH quality_checks AS (
     -- rules implemented in 03_clean_staging.sql.
     UNION ALL
 
+    -- The three audited uppercase variants should use their title-case label;
+    -- company names outside those exact variants should remain unchanged.
     SELECT
-        'inconsistent_company_key',
+        'inconsistent_company_name',
         COUNT(*)::BIGINT,
         0::BIGINT,
         CASE
@@ -289,7 +277,13 @@ WITH quality_checks AS (
             ELSE 'FAIL'
         END
     FROM stg_complaints
-    WHERE company_key <> LOWER(TRIM(company))
+    WHERE company_name IS DISTINCT FROM CASE company
+        WHEN 'ATM OPS INC' THEN 'ATM OPS Inc'
+        WHEN 'FIRST TECHNOLOGY FEDERAL CREDIT UNION'
+            THEN 'First Technology Federal Credit Union'
+        WHEN 'GLOBAL CREDIT UNION' THEN 'Global Credit Union'
+        ELSE company
+    END
 
     UNION ALL
 

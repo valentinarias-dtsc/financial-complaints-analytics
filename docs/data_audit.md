@@ -54,7 +54,7 @@ After `LOWER(TRIM())`, product, sub-product, issue, state, and company-response 
 | `first technology federal credit union` | `First Technology Federal Credit Union`; `FIRST TECHNOLOGY FEDERAL CREDIT UNION` | 421 |
 | `global credit union` | `Global Credit Union`; `GLOBAL CREDIT UNION` | 116 |
 
-The variants affect 540 rows and differ only in casing. The staging layer retains the source label while using a `LOWER(TRIM())` key to prevent fragmented company totals. Advanced entity matching is not justified.
+The variants affect 540 rows and differ only in casing. The staging layer retains the source label in `company` and uses `company_name` to replace the three all-uppercase variants with their audited title-case labels. All other company labels remain unchanged. Advanced entity matching is not justified.
 
 ## 5. Product Taxonomy and Historical Credit-Card Transition
 
@@ -80,7 +80,7 @@ One `Checking or savings account` complaint has the inconsistent sub-product `Cr
 | Five rows lack required classification | Product and issue aggregations would be undefined | Exclude the five rows from analytical staging |
 | `sub_issue` is structurally optional | Absence does not invalidate the parent issue | Retain rows and preserve the unavailable value |
 | Narratives are unavailable for 42.18% of rows | Narrative coverage must be explicit | Do not impute; derive an availability indicator |
-| Company casing creates three duplicate normalized labels | Raw labels would fragment company totals | Create a normalized grouping key and retain the source label |
+| Company casing creates three duplicate normalized labels | Raw labels would fragment company totals | Consolidate the audited uppercase variants in `company_name` and retain the source label in `company` |
 | Historical credit and prepaid records share one source category | Raw product labels are not longitudinally comparable | Map 32,541 credit records and exclude 2,769 prepaid records |
 | One product/sub-product pair is inconsistent | The row cannot be assigned reliably within the selected taxonomy | Exclude the row and document the rule |
 
