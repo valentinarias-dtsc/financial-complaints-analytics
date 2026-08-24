@@ -209,9 +209,38 @@ WITH quality_checks AS (
         END
     FROM stg_complaints
     WHERE source_product = 'Credit card or prepaid card'
-      AND sub_product NOT IN (
-          'General-purpose credit card or charge card',
-          'Store credit card'
+      AND sub_product IN (
+          'General-purpose prepaid card',
+          'Gift card',
+          'Government benefit card',
+          'Payroll card',
+          'Student prepaid card'
+    )
+
+    UNION ALL
+
+    SELECT
+        'unexpected_historical_card_sub_product' AS check_name,
+        COUNT(*)::BIGINT AS observed_value,
+        0::BIGINT AS expected_value,
+        CASE
+            WHEN COUNT(*) = 0 THEN 'PASS'
+            ELSE 'FAIL'
+        END AS status
+    FROM raw_complaints
+    WHERE product = 'Credit card or prepaid card'
+      AND (
+          sub_product IS NULL
+          OR LOWER(TRIM(sub_product)) = 'none'
+          OR sub_product NOT IN (
+              'General-purpose credit card or charge card',
+              'General-purpose prepaid card',
+              'Gift card',
+              'Government benefit card',
+              'Payroll card',
+              'Store credit card',
+              'Student prepaid card'
+          )
       )
 
     UNION ALL
@@ -230,7 +259,7 @@ WITH quality_checks AS (
           'General-purpose credit card or charge card',
           'Store credit card'
       )
-      AND analytical_product <> 'Credit card'
+      AND analytical_product IS DISTINCT FROM 'Credit card'
 
     UNION ALL
 
