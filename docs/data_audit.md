@@ -6,7 +6,7 @@ The data audit assesses whether `raw_complaints` supports the planned metrics an
 
 The audit covers identifier integrity, relevant missing values, temporal coverage, categorical domains, product taxonomy, the historical credit-card transition, and expected cleaning impact.
 
-The unit of analysis is one published complaint received from 2023-01-01 through 2025-12-31. The extraction contains four CFPB source categories: `Credit card or prepaid card`, `Credit card`, `Checking or savings account`, and `Money transfer, virtual currency, or money service`. Staging will harmonize them into three analytical families by separating historical credit-card records from prepaid-card records. Mortgage and student-loan complaints are not part of the current MVP extraction.
+The unit of analysis is one published complaint received from 2023-01-01 through 2025-12-31. The extraction contains four CFPB source categories: `Credit card or prepaid card`, `Credit card`, `Checking or savings account`, and `Money transfer, virtual currency, or money service`. `sql/03_clean_staging.sql` harmonizes them into three analytical families by separating historical credit-card records from prepaid-card records. Mortgage and student-loan complaints are not part of the current MVP extraction.
 
 ## 2. Integrity and Validation Checks
 
@@ -40,9 +40,9 @@ The source also represents unavailable values with `None`; the audit treats it a
 | `company` | 0 | 0.00% |
 | `timely_response` | 0 | 0.00% |
 
-The missing `sub_product` and `issue` values occur in the same five complaints. Both fields are required for analysis, so those records will be excluded rather than imputed.
+The missing `sub_product` and `issue` values occur in the same five complaints. Both fields are required for analysis, so `sql/03_clean_staging.sql` excludes those records rather than imputing them.
 
-Missing `sub_issue` values are not invalid because a subcategory is not applicable to every issue; they will not cause exclusion. Narratives are optional: 42.18% are unavailable and 57.82% are available for the planned KPI. They will not be imputed.
+Missing `sub_issue` values are not invalid because a subcategory is not applicable to every issue; they do not cause exclusion. Narratives are optional: 42.18% are unavailable and 57.82% are available for the planned KPI. They are not imputed.
 
 ## 4. Categorical Normalization
 
@@ -54,7 +54,7 @@ After `LOWER(TRIM())`, product, sub-product, issue, state, and company-response 
 | `first technology federal credit union` | `First Technology Federal Credit Union`; `FIRST TECHNOLOGY FEDERAL CREDIT UNION` | 421 |
 | `global credit union` | `Global Credit Union`; `GLOBAL CREDIT UNION` | 116 |
 
-The variants affect 540 rows and differ only in casing. Staging will retain the source label while using a `LOWER(TRIM())` key to prevent fragmented company totals. Advanced entity matching is not justified.
+The variants affect 540 rows and differ only in casing. The staging layer retains the source label while using a `LOWER(TRIM())` key to prevent fragmented company totals. Advanced entity matching is not justified.
 
 ## 5. Product Taxonomy and Historical Credit-Card Transition
 
@@ -69,11 +69,11 @@ Historical records are classified by `sub_product`. `General-purpose credit card
 | Historical prepaid sub-products | 2,769 | Exclude from the MVP |
 | Other in-scope product families | 302,000 | Retain |
 
-One `Checking or savings account` complaint has the inconsistent sub-product `Credit reporting`. It will be excluded from staging while remaining unchanged in raw data.
+One `Checking or savings account` complaint has the inconsistent sub-product `Credit reporting`. It is excluded from staging while remaining unchanged in raw data.
 
 ## 6. Cleaning Decisions Derived from the Audit
 
-| Audit finding | Analytical implication | Decision for `03_clean_staging.sql` |
+| Audit finding | Analytical implication | Implemented staging treatment |
 |---|---|---|
 | Complaint IDs are complete and unique | Raw rows already represent the intended unit of analysis | Preserve one row per `complaint_id`; no deduplication rule required |
 | Received dates are valid and within scope | Time-series filters can use a typed received date | Cast timestamps and define inclusion using `date_received` |
@@ -84,8 +84,8 @@ One `Checking or savings account` complaint has the inconsistent sub-product `Cr
 | Historical credit and prepaid records share one source category | Raw product labels are not longitudinally comparable | Map 32,541 credit records and exclude 2,769 prepaid records |
 | One product/sub-product pair is inconsistent | The row cannot be assigned reliably within the selected taxonomy | Exclude the row and document the rule |
 
-Six mutually exclusive actions reconcile all 525,156 raw rows. After 2,775 exclusions, the expected staging population is 522,381 complaints, providing the next stage's reconciliation baseline.
+Six mutually exclusive actions reconcile all 525,156 raw rows. `sql/03_clean_staging.sql` implements the 2,775 documented exclusions and targets an audit-derived staging population of 522,381 complaints; `sql/04_quality_checks.sql` validates that reconciliation when the workflow is run.
 
 ## 7. Audit Artifacts and Reproducibility
 
-`sql/02_data_audit.sql` recreates six audit materialized views on each run. CSV snapshots in `data/audit/` preserve evidence for validation, missingness, normalization, and cleaning impact. This document records their interpretation and resulting staging decisions.
+`sql/02_data_audit.sql` recreates six audit materialized views on each run. CSV snapshots in `data/audit/` preserve evidence for validation, missingness, normalization, and cleaning impact. This document records their interpretation and the decisions implemented in `sql/03_clean_staging.sql`; `sql/04_quality_checks.sql` provides the corresponding staging validation logic.
