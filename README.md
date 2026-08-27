@@ -2,13 +2,13 @@
 
 > A reproducible SQL and Power BI analytics project for monitoring consumer complaints in U.S. banking and payments.
 
-**Project status:** Active development — reproducible extraction, raw PostgreSQL loading, a documented data audit, staging transformations, quality checks, and the reporting layer are implemented in SQL. Business analysis queries are partially implemented; the Power BI report and published business findings remain planned.
+**Project status:** Active development — the reproducible extraction, PostgreSQL pipeline, business-analysis queries, and documented descriptive findings are implemented. A baseline Power BI file is committed. The product–issue anomaly method remains pending, and the report's page, KPI, Power Query, and DAX definitions are not yet documented in reviewable text.
 
 ## Project overview
 
 Financial institutions receive complaints across products, service channels, and operational processes. Turning those records into reliable management information can help customer operations and compliance teams identify where complaint volume is concentrated, which issues are growing, and where response performance may require attention.
 
-This project uses public records from the [Consumer Financial Protection Bureau (CFPB) Consumer Complaint Database](https://www.consumerfinance.gov/data-research/consumer-complaints/) to build a focused analytics workflow in PostgreSQL and, in a later stage, a two-page Power BI report. The objective is monitoring and prioritization—not complaint prediction, causal evaluation, or a production data platform.
+This project uses public records from the [Consumer Financial Protection Bureau (CFPB) Consumer Complaint Database](https://www.consumerfinance.gov/data-research/consumer-complaints/) to build a focused analytics workflow in PostgreSQL with a committed baseline Power BI report. The objective is monitoring and prioritization—not complaint prediction, causal evaluation, or a production data platform.
 
 The MVP is deliberately limited to practical SQL, transparent data-quality decisions, basic Power Query and DAX, and concise analytical communication. Python, notebooks, cloud services, and advanced BI features are outside the initial scope.
 
@@ -54,9 +54,9 @@ The staging layer reports three product families: credit cards, checking or savi
 | Staging quality checks | Implemented | `sql/04_quality_checks.sql` verifies grain, expected row counts, required fields, product scope, mappings, derived fields, and date coverage with a PASS/FAIL summary |
 | Reporting mart and calendar table | Implemented | `sql/05_reporting_mart.sql` creates complaint-level `mart_complaints` and a continuous 2023–2025 `dim_calendar` without duplicating staging logic |
 | Ordered SQL pipeline | Implemented | `sql/00_run_pipeline.sql` executes raw loading through mart creation in dependency order with stop-on-error behavior |
-| Business analysis queries | Partially implemented | `sql/06_business_analysis.sql` covers dataset overview, monthly change, product mix, and issue concentration; response, company/channel, growth-prioritization, and final interpretation work remains |
-| Power BI report and DAX measures | Planned | Two report pages and approximately six reusable measures |
-| Findings and recommendations | Planned | Results will be published only after the analytical queries and metrics are validated |
+| Business analysis queries | Implemented, except anomaly method | `sql/06_business_analysis.sql` covers dataset overview, change, mix, concentration, 2024–2025 growth, timely response, company and channel breakdowns, response categories, and narrative availability; section 12 deliberately contains no executable anomaly query |
+| Published descriptive findings | Implemented | [The business-analysis report](docs/business_analysis.md) records reconciled results, interpretation limits, and the unresolved January 2025 signal |
+| Power BI report | Baseline artifact committed; documentation pending | `powerbi/baseline.pbix` is present, but its pages, measures, Power Query steps, and reconciliation checks are not documented in text |
 
 ## Data workflow
 
@@ -69,7 +69,7 @@ flowchart TD
     E --> F[SQL staging and validation]
     F --> G[SQL reporting mart]
     G --> H[SQL business queries]
-    H --> I[Planned Power BI report]
+    H --> I[Baseline Power BI report]
 ```
 
 Implemented steps preserve the source values in a text-based raw table so that type conversion, normalization, and exclusions remain explicit downstream decisions.
@@ -81,6 +81,7 @@ Implemented steps preserve the source values in a text-based raw table so that t
 - Windows PowerShell or PowerShell with access to `curl.exe`.
 - PostgreSQL with the `psql` command-line client.
 - Network access to the CFPB complaint search API.
+- Power BI Desktop to open the committed baseline report; it is not required to run the SQL workflow.
 
 Run commands from the repository root so the relative `data/raw/` paths used by `psql` resolve correctly.
 
@@ -116,7 +117,7 @@ psql -d <database_name> -f sql/02_data_audit.sql
 
 The audit script does not update or delete `raw_complaints`. It evaluates complaint-ID integrity, missing-value patterns, received and sent date coverage, the impact of text normalization, low-cardinality domains, product and issue relationships, the 2023 credit-card taxonomy transition, and records potentially affected by future cleaning rules. It recreates six materialized audit views and exports five compact CSV snapshots to `data/audit/`.
 
-The published audit reconciles 525,156 raw rows to the same number of distinct complaint IDs. It quantifies 2,775 records for planned exclusion and establishes an expected staging population of 522,381 complaints. See the [data audit report](docs/data_audit.md) for the evidence, interpretation, and derived cleaning decisions. These figures describe data preparation; business findings remain pending.
+The published audit reconciles 525,156 raw rows to the same number of distinct complaint IDs. It quantifies 2,775 records for documented exclusion and establishes an expected staging population of 522,381 complaints. See the [data audit report](docs/data_audit.md) for the evidence, interpretation, and derived cleaning decisions. These figures describe data preparation; business findings remain pending.
 
 ### 4. Build the staging table
 
@@ -148,7 +149,7 @@ The script recreates `mart_complaints` at complaint grain with reporting-relevan
 psql -d <database_name> -f sql/06_business_analysis.sql
 ```
 
-The current analysis script returns a dataset overview, monthly complaint volume with month-over-month and year-over-year changes, product distributions and monthly mix, issue concentration with a cumulative share, and product–issue counts. These are reusable analytical queries; interpreted findings are not yet published.
+The analysis script returns the result sets described below. Interpreted, scope-bounded findings are published in [the business-analysis report](docs/business_analysis.md). Its most important unresolved signal is the January 2025 concentration in `Money transfer, virtual currency, or money service` → `Other transaction problem`; the repository does not yet implement a finished anomaly method or causal explanation.
 
 Source CSVs and generated manifests are intentionally excluded from version control. Results depend on the CFPB export returned when the extractor is run, even though the filters and date windows are fixed.
 
@@ -174,38 +175,31 @@ Implemented in `sql/06_business_analysis.sql`:
 - dataset size, temporal coverage, and category cardinalities;
 - monthly complaint volume with month-over-month and year-over-year comparisons;
 - overall and monthly product mix;
-- issue distribution and cumulative share; and
-- complaint counts by product–issue combination.
+- issue and product–issue concentration;
+- 2024–2025 product–issue growth with a 100-complaint prior-year threshold;
+- timely response overall and by product;
+- company volume and timely-response comparisons;
+- response-category and submission-channel breakdowns; and
+- narrative availability overall and by product.
 
-Still planned before the analytical narrative is complete:
+The final SQL section is explicitly pending: it records questions for investigating the January 2025 product–issue concentration but includes no executable anomaly query.
 
-- growth comparisons for product–issue combinations;
-- timely response rates by company, product, and submission channel;
-- narrative availability reporting;
-- minimum-volume rules for company comparisons; and
-- documented findings, prioritization criteria, and recommendations.
+### Published analysis
 
-Metric definitions, denominators, filters, and caveats will be documented before interpreted results are presented.
+[The business-analysis report](docs/business_analysis.md) documents the reconciled output from a completed pipeline run: 522,381 complaints after 2,775 documented exclusions, 18 passing staging checks, and descriptive results for volume, mix, growth, response timing, company and channel concentration, and narrative availability. It treats the January 2025 concentration as a signal requiring investigation, not as a validated anomaly or causal finding.
 
-### Planned Power BI report
+Complete query exports remain local under `private/business_analysis_results/` and are excluded from version control. The committed report provides the reviewable aggregate results and material limitations.
 
-**Page 1 — Executive Overview**
+### Power BI baseline and intended completion
 
-- headline KPIs;
-- monthly complaint trend;
-- product mix;
-- leading issues; and
-- year and product filters.
+A baseline report is committed at `powerbi/baseline.pbix`. Because the binary artifact is not accompanied by text-based page, measure, Power Query, or reconciliation documentation, the repository does not yet verify that the intended two-page design and approximately six reusable DAX measures are complete.
 
-**Page 2 — Company & Issue Analysis**
+The documented target remains:
 
-- company complaint volume;
-- timely response rate;
-- response category distribution;
-- high-volume and fast-growing issues; and
-- company, product, and channel filters.
+- an executive overview with headline KPIs, monthly trend, product mix, leading issues, and year/product filters; and
+- a company and issue view with complaint volume, timely response, response categories, growth signals, and company/product/channel filters.
 
-The report is planned around one analytical mart and a calendar table. Power Query will be limited to connection and presentation-level adjustments, while DAX will be limited to approximately six reusable measures.
+Remaining work is to document the implemented report structure and metric definitions, reconcile Power BI outputs to SQL, and complete the pending anomaly methodology before presenting that signal as a finalized analytical result.
 
 ## Repository structure
 
@@ -215,23 +209,26 @@ financial-complaints-analytics/
 │   ├── audit/                       # Published compact audit evidence
 │   └── raw/                         # Generated source partitions; ignored by Git
 ├── docs/
+│   ├── business_analysis.md         # Published descriptive results and limitations
 │   └── data_audit.md                # Implemented audit results and decisions
+├── powerbi/
+│   └── baseline.pbix                # Committed baseline Power BI report
 ├── scripts/
 │   └── download_data.ps1            # Implemented CFPB extraction and validation
 ├── sql/
 │   ├── 00_run_pipeline.sql          # Implemented ordered database build
 │   ├── 01_load_raw_data.sql         # Implemented raw schema and reload
 │   ├── 02_data_audit.sql            # Implemented audit and evidence exports
-│   ├── 03_clean_staging.sql          # Implemented staging transformations
-│   ├── 04_quality_checks.sql         # Implemented staging validations
-│   ├── 05_reporting_mart.sql         # Implemented mart and calendar dimension
-│   └── 06_business_analysis.sql      # Partially implemented analytical queries
+│   ├── 03_clean_staging.sql         # Implemented staging transformations
+│   ├── 04_quality_checks.sql        # Implemented staging validations
+│   ├── 05_reporting_mart.sql        # Implemented mart and calendar dimension
+│   └── 06_business_analysis.sql     # Implemented analysis; anomaly method pending
 ├── .gitignore
 ├── LICENSE
 └── README.md
 ```
 
-Additional SQL, documentation, Power BI, and image artifacts will be added as their corresponding project stages are implemented.
+Additional documentation and presentation artifacts may be added as the baseline report and pending anomaly work are completed.
 
 ## Delivery roadmap
 
@@ -240,24 +237,25 @@ Additional SQL, documentation, Power BI, and image artifacts will be added as th
 | Scope, extraction, raw loading, and documented audit | Completed | Reproducible raw layer and evidence-based cleaning decisions |
 | Staging transformations and quality-check logic | Implemented | Audited exclusions, three-family taxonomy, typed fields, and reproducible PASS/FAIL checks |
 | Reporting mart and calendar dimension | Implemented | Complaint-grain reporting table and continuous date dimension |
-| Business analysis queries | Partially implemented | Volume, change, mix, and concentration queries; response and prioritization coverage remains |
-| KPI definitions and Power BI | Planned | Functional two-page report with reconciled measures |
-| Findings, limitations, and presentation | Planned | Concise analytical narrative supported by validated outputs |
+| Business analysis queries and narrative | Implemented, except anomaly method | Reconciled descriptive queries and published findings; anomaly assumptions and executable analysis remain pending |
+| Power BI baseline | Artifact committed; documentation pending | Binary baseline report is present; page structure, measure definitions, and SQL reconciliation still require reviewable documentation |
+| Final presentation | Planned | Documented and reconciled Power BI deliverable plus a resolved or explicitly deferred anomaly investigation |
 
 The roadmap communicates sequence rather than a delivery guarantee. Scope may be adjusted when the data audit identifies a material quality or interpretation constraint.
 
 ## Quality and interpretation safeguards
 
-The completed workflow is intended to validate:
+The implemented SQL workflow validates:
 
 - uniqueness of complaint identifiers;
 - valid date ranges;
 - required values and category consistency;
-- record counts across extraction, raw, staging, and mart layers;
-- metric reconciliation between SQL and Power BI; and
-- minimum-volume thresholds for company comparisons.
+- record counts across extraction, raw, staging, and mart layers; and
+- the 100-complaint threshold used for company response-rate comparisons.
 
-The source has important interpretation limits. Complaints are published records rather than a representative sample of all customer experiences. Company comparisons lack exposure denominators such as customer or transaction counts. Taxonomy changes, optional narratives, submission behavior, and publication rules may also affect observed patterns. Findings will therefore be presented as descriptive signals for monitoring and investigation, not causal evidence.
+Power BI-to-SQL metric reconciliation remains pending until the report's measures and outputs are documented.
+
+The source has important interpretation limits. Complaints are published records rather than a representative sample of all customer experiences. Company comparisons lack exposure denominators such as customer or transaction counts. Taxonomy changes, optional narratives, submission behavior, and publication rules may also affect observed patterns. Findings are therefore presented as descriptive signals for monitoring and investigation, not causal evidence.
 
 ## Out of scope for the MVP
 
