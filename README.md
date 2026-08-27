@@ -117,7 +117,7 @@ psql -d <database_name> -f sql/02_data_audit.sql
 
 The audit script does not update or delete `raw_complaints`. It evaluates complaint-ID integrity, missing-value patterns, received and sent date coverage, the impact of text normalization, low-cardinality domains, product and issue relationships, the 2023 credit-card taxonomy transition, and records potentially affected by future cleaning rules. It recreates six materialized audit views and exports five compact CSV snapshots to `data/audit/`.
 
-The published audit reconciles 525,156 raw rows to the same number of distinct complaint IDs. It quantifies 2,775 records for documented exclusion and establishes an expected staging population of 522,381 complaints. See the [data audit report](docs/data_audit.md) for the evidence, interpretation, and derived cleaning decisions. These figures describe data preparation; business findings remain pending.
+The published audit reconciles 525,156 raw rows to the same number of distinct complaint IDs. It quantifies 2,775 records for documented exclusion and establishes an expected staging population of 522,381 complaints. See the [data audit report](docs/data_audit.md) for the evidence, interpretation, and derived cleaning decisions. These figures describe data preparation; the separate [business-analysis report](docs/business_analysis.md) presents the validated descriptive findings.
 
 ### 4. Build the staging table
 
