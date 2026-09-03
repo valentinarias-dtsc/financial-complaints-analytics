@@ -1,5 +1,7 @@
 # Financial Complaints Analytics
 
+**English** | [Español](README.es.md)
+
 > A reproducible PostgreSQL and Power BI project for monitoring consumer complaints in U.S. banking and payments.
 
 **Status:** Portfolio-ready MVP. The repository includes the extraction workflow, SQL pipeline, audit evidence, business analysis, final two-page Power BI report, dashboard previews, and metric documentation.
@@ -213,6 +215,7 @@ financial-complaints-analytics/
 │   └── 06_business_analysis.sql
 ├── .gitignore
 ├── LICENSE
+├── README.es.md
 └── README.md
 ```
 
