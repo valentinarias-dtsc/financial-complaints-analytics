@@ -180,6 +180,15 @@ Counts are displayed as whole numbers with thousands separators. Percentages use
 
 Display units are set to `None` so Power BI does not automatically abbreviate values as thousands.
 
+## Portfolio Screenshots
+
+The repository includes a preview of each visible page in its default unfiltered state:
+
+- [Executive Overview](../docs/images/executive-overview.png)
+- [Company & Issue Analysis](../docs/images/company-issue-analysis.png)
+
+The previews keep the Year and Product slicers visible and exclude Power BI Desktop chrome. The hidden QA page is intentionally not included.
+
 ## Deferred Analysis
 
 The report does not include a finalized `Fastest-Growing Issues` visual.
