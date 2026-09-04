@@ -6,6 +6,8 @@
 
 **Estado:** MVP listo para portfolio. El repositorio incluye el flujo de extracción, el pipeline SQL, evidencia de auditoría, análisis de negocio, el reporte final de Power BI de dos páginas, vistas previas del dashboard y documentación de métricas.
 
+![Dashboard de resumen ejecutivo de Financial Complaints](docs/images/executive-overview.png)
+
 ## Descripción del proyecto
 
 Las instituciones financieras reciben reclamos vinculados con distintos productos y procesos operativos, pero los conteos crudos requieren una preparación e interpretación cuidadosas antes de poder respaldar decisiones de gestión.
@@ -53,15 +55,13 @@ El reporte final se encuentra en [`powerbi/financial_complaints_analytics.pbix`]
 
 La primera página combina filtros de Año y Producto con Total de reclamos, Crecimiento interanual, Tasa de respuesta puntual, Tasa de narrativas, volumen mensual de reclamos, mix de productos y los cinco principales problemas.
 
-![Dashboard de resumen ejecutivo de Financial Complaints](docs/images/executive-overview.png)
-
 ### Análisis de compañías y problemas
 
 La segunda página presenta las diez compañías con mayor volumen de reclamos junto con su tasa de respuesta puntual, además de los problemas, subproductos y categorías de respuesta con mayor volumen. El volumen por compañía se utiliza para priorizar investigaciones y no se presenta como un ranking de calidad ajustado por exposición.
 
 ![Dashboard de análisis de compañías y problemas de Financial Complaints](docs/images/company-issue-analysis.png)
 
-El archivo `.pbix` también conserva una página de QA oculta, utilizada para reconciliar resultados globales, anuales, por producto, tasas y cálculos de inteligencia temporal contra PostgreSQL.
+El archivo `.pbix` también conserva una página de QA oculta, utilizada para reconciliar contra PostgreSQL resultados globales, anuales, por producto, de respuesta puntual y de disponibilidad de narrativas.
 
 ## Principales hallazgos
 
@@ -156,6 +156,37 @@ Las definiciones, fórmulas DAX, comportamiento de filtros, reconciliación SQL 
 
 Los comandos deben ejecutarse desde la raíz del repositorio, ya que el loader SQL utiliza rutas relativas dentro de `data/raw/`.
 
+### Elegir un recorrido de revisión
+
+**Revisión rápida — no requiere base de datos**
+
+- inspeccionar la evidencia de auditoría versionada en `data/audit/`;
+- leer `docs/data_audit.md` y `docs/business_analysis.md`;
+- revisar los scripts SQL y el diccionario de KPIs;
+- inspeccionar las capturas del dashboard o abrir el `.pbix` versionado.
+
+**Reproducción completa**
+
+Descargar las extracciones actuales del CFPB, construir en PostgreSQL las capas desde raw hasta el mart de reporting, ejecutar el análisis de negocio y actualizar Power BI mediante los pasos siguientes.
+
+### Configuración de PostgreSQL
+
+Crear una base de datos vacía antes de ejecutar el pipeline:
+
+```powershell
+createdb -h <host> -p <port> -U <user> financial_complaints_analytics
+```
+
+Los datos de conexión pueden proporcionarse mediante los argumentos de los comandos siguientes o mediante las variables estándar de PostgreSQL `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER` y `PGPASSWORD`. El repositorio no requiere ni lee un archivo `.env`.
+
+Comprobar la conexión antes de descargar los datos:
+
+```powershell
+psql -h <host> -p <port> -U <user> `
+  -d financial_complaints_analytics `
+  -c "SELECT current_database();"
+```
+
 ### 1. Descargar y validar las particiones fuente
 
 ```powershell
@@ -164,27 +195,33 @@ powershell -ExecutionPolicy Bypass -File .\scripts\download_data.ps1
 
 El extractor genera ocho particiones CSV fijas y no superpuestas, además de `extraction_manifest.csv`. Por defecto, los archivos existentes se validan y conservan; se puede usar `-Force` para reconstruirlos.
 
+La extracción publicada contiene 525.156 filas y ocupa aproximadamente 480 MiB. La descarga, validación de CSV, carga en PostgreSQL y ejecución de la auditoría pueden tardar más que unos pocos minutos, según la velocidad de red y el hardware local. Este es el recorrido de reproducción completa, no el de revisión rápida.
+
 ### 2. Construir el pipeline de base de datos
 
 ```powershell
-psql -d <database_name> -f sql/00_run_pipeline.sql
+psql -h <host> -p <port> -U <user> `
+  -d financial_complaints_analytics `
+  -f sql/00_run_pipeline.sql
 ```
 
-El runner ejecuta desde la carga raw hasta la creación del mart con `ON_ERROR_STOP`. Los scripts individuales también pueden ejecutarse en orden numérico.
+El runner ejecuta desde la carga raw hasta la creación del mart con `ON_ERROR_STOP`. Los scripts individuales también pueden ejecutarse en orden numérico. Cualquier control de calidad de staging fallido detiene el runner antes de crear el mart de reporting.
 
 ### 3. Ejecutar el análisis de negocio
 
 ```powershell
-psql -d <database_name> -f sql/06_business_analysis.sql
+psql -h <host> -p <port> -U <user> `
+  -d financial_complaints_analytics `
+  -f sql/06_business_analysis.sql
 ```
 
 Este script se mantiene intencionalmente fuera del runner porque devuelve resultados analíticos en lugar de crear una capa downstream.
 
 ### 4. Abrir o actualizar Power BI
 
-Abrir `powerbi/financial_complaints_analytics.pbix`, configurar la conexión PostgreSQL hacia la base que contiene `mart_complaints` y `dim_calendar`, y actualizar el modelo importado. La página de QA oculta permite comparar los resultados actualizados con los valores de referencia documentados.
+Abrir `powerbi/financial_complaints_analytics.pbix` y seguir la [guía del reporte de Power BI](powerbi/README.md#refreshing-from-another-postgresql-instance) para configurar y actualizar la conexión PostgreSQL. La página de QA oculta permite comparar los resultados actualizados con los valores de referencia documentados.
 
-Los archivos raw y los manifests generados se excluyen de Git. Los conteos reproducidos pueden variar si el CFPB vuelve a publicar registros de la fuente; el manifest identifica la extracción local utilizada en cada ejecución. La [guía del directorio de datos](data/README.md) explica la política de artefactos.
+Los archivos raw y los manifests generados se excluyen de Git. Los conteos reproducidos pueden variar si el CFPB vuelve a publicar registros de la fuente. El manifest publicado y versionado fija el baseline documentado, mientras que el manifest generado identifica la extracción local de una nueva ejecución. La [guía del directorio de datos](data/README.md) explica la política de artefactos.
 
 ## Estructura del repositorio
 

@@ -6,6 +6,8 @@
 
 **Status:** Portfolio-ready MVP. The repository includes the extraction workflow, SQL pipeline, audit evidence, business analysis, final two-page Power BI report, dashboard previews, and metric documentation.
 
+![Financial Complaints Executive Overview dashboard](docs/images/executive-overview.png)
+
 ## Project Overview
 
 Financial institutions receive complaints across products and operational processes, but raw complaint counts require careful preparation and interpretation before they can support management decisions.
@@ -53,15 +55,13 @@ The final report is available at [`powerbi/financial_complaints_analytics.pbix`]
 
 The first page combines Year and Product slicers with Total Complaints, YoY Complaint Growth, Timely Response Rate, Narrative Rate, monthly complaint volume, product mix, and the five leading issues.
 
-![Financial Complaints Executive Overview dashboard](docs/images/executive-overview.png)
-
 ### Company & Issue Analysis
 
 The second page presents the top ten companies by complaint volume with their timely response rate, plus high-volume issues, sub-products, and company response categories. Company volume is used for prioritization and is not presented as an exposure-adjusted quality ranking.
 
 ![Financial Complaints Company and Issue Analysis dashboard](docs/images/company-issue-analysis.png)
 
-The `.pbix` also retains a hidden QA page used to reconcile global, annual, product, rate, and time-intelligence results against PostgreSQL.
+The `.pbix` also retains a hidden QA page used to reconcile global, annual, product, timely-response, and narrative-availability results against PostgreSQL.
 
 ## Key Findings
 
@@ -156,6 +156,37 @@ Definitions, DAX, filter behavior, SQL reconciliation, and caveats are published
 
 Run commands from the repository root because the SQL loader uses relative paths under `data/raw/`.
 
+### Choose a review path
+
+**Quick review — no database required**
+
+- inspect the committed audit evidence under `data/audit/`;
+- read `docs/data_audit.md` and `docs/business_analysis.md`;
+- review the SQL scripts and KPI dictionary;
+- inspect the dashboard previews or open the committed `.pbix`.
+
+**Full reproduction**
+
+Download the current CFPB extracts, build PostgreSQL from raw through the reporting mart, run the business analysis, and refresh Power BI using the steps below.
+
+### PostgreSQL setup
+
+Create an empty project database before running the pipeline:
+
+```powershell
+createdb -h <host> -p <port> -U <user> financial_complaints_analytics
+```
+
+Connection details can be supplied through the command arguments shown below or through PostgreSQL's standard `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, and `PGPASSWORD` environment variables. The repository does not require or read an `.env` file.
+
+Test the connection before downloading data:
+
+```powershell
+psql -h <host> -p <port> -U <user> `
+  -d financial_complaints_analytics `
+  -c "SELECT current_database();"
+```
+
 ### 1. Download and validate source partitions
 
 ```powershell
@@ -164,27 +195,33 @@ powershell -ExecutionPolicy Bypass -File .\scripts\download_data.ps1
 
 The extractor writes eight fixed, non-overlapping CSV partitions and `extraction_manifest.csv`. Existing files are validated and retained by default; use `-Force` to rebuild them.
 
+The published extraction contains 525,156 rows and occupies approximately 480 MiB. Download, CSV validation, PostgreSQL loading, and audit queries can take more than a few minutes depending on network speed and local hardware. This is the full reproduction path, not the quick-review path.
+
 ### 2. Build the database pipeline
 
 ```powershell
-psql -d <database_name> -f sql/00_run_pipeline.sql
+psql -h <host> -p <port> -U <user> `
+  -d financial_complaints_analytics `
+  -f sql/00_run_pipeline.sql
 ```
 
-The runner executes raw loading through mart creation with `ON_ERROR_STOP`. Individual scripts can also be run in numerical order.
+The runner executes raw loading through mart creation with `ON_ERROR_STOP`. Individual scripts can also be run in numerical order. Any failed staging quality check stops the runner before the reporting mart is created.
 
 ### 3. Run the business analysis
 
 ```powershell
-psql -d <database_name> -f sql/06_business_analysis.sql
+psql -h <host> -p <port> -U <user> `
+  -d financial_complaints_analytics `
+  -f sql/06_business_analysis.sql
 ```
 
 This script is intentionally outside the build runner because it returns analytical result sets rather than creating a downstream layer.
 
 ### 4. Open or refresh Power BI
 
-Open `powerbi/financial_complaints_analytics.pbix`, configure the PostgreSQL connection for the database containing `mart_complaints` and `dim_calendar`, and refresh the imported model. Use the hidden QA page to compare the refreshed results with the documented reference values.
+Open `powerbi/financial_complaints_analytics.pbix` and follow the [Power BI report guide](powerbi/README.md#refreshing-from-another-postgresql-instance) to configure and refresh the PostgreSQL connection. Use the hidden QA page to compare the refreshed results with the documented reference values.
 
-Raw complaint files and generated manifests are excluded from Git. Reproduced counts may differ if the CFPB republishes source records; the manifest identifies the local extraction used for a run. See the [data directory guide](data/README.md) for artifact policy.
+Raw complaint files and generated manifests are excluded from Git. Reproduced counts may differ if the CFPB republishes source records. The versioned published manifest anchors the documented baseline, while the generated manifest identifies the local extraction used for a new run. See the [data directory guide](data/README.md) for artifact policy.
 
 ## Repository Structure
 

@@ -358,17 +358,12 @@ ORDER BY
     analytical_product;
 
 
--- 12. Product-issue anomaly analysis (PENDING)
--- TODO: resume the exploratory investigation of 2025-01, including the signal
--- for "Money transfer, virtual currency, or money service" and
--- "Other transaction problem".
+-- 12. DEFERRED JANUARY 2025 CONCENTRATION ANALYSIS
+-- January 2025 contains an extraordinary concentration for:
 --
--- Before implementing this section, define and justify:
---   * the historical reference period and baseline;
---   * expected and excess complaint calculations;
---   * absolute volume change versus relative share change;
---   * minimum-volume rules;
---   * whether a later company or submission-channel breakdown is warranted.
+--   Money transfer, virtual currency, or money service
+--   Other transaction problem
 --
--- No executable query is included yet so that exploratory assumptions are not
--- presented as a finished anomaly-detection method.
+-- This signal is documented as a post-MVP research direction. No executable
+-- query is included because the project does not yet define or validate a
+-- method for classifying the observation as an anomaly or assigning a cause.

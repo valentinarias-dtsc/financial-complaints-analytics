@@ -10,7 +10,7 @@ Three findings define the current portfolio:
 
 - `Credit card` is the largest product overall, with 220,381 complaints and a 42.19% share.
 - `Managing an account` is the largest issue, with 103,749 complaints and a 19.86% share.
-- `Money transfer, virtual currency, or money service` combined with `Other transaction problem` rose from 3,007 complaints in 2024 to 53,893 in 2025. This combination requires a dedicated anomaly investigation before the increase is interpreted.
+- `Money transfer, virtual currency, or money service` combined with `Other transaction problem` rose from 3,007 complaints in 2024 to 53,893 in 2025. This concentration should be investigated before the increase is interpreted.
 
 Response performance is consistently high: 518,681 complaints received a timely response, equivalent to 99.29% of the mart. Narratives are available for 302,021 complaints, or 57.82%, with the highest availability in money-transfer complaints.
 
@@ -71,7 +71,7 @@ The January observation should not be treated as ordinary trend growth until its
 | Checking or savings account | 52,814 | 36.28% | 84,194 | 32.53% |
 | Money transfer, virtual currency, or money service | 16,751 | 11.51% | 84,619 | 32.70% |
 
-All three products increased in absolute volume. Credit-card complaints grew by 18.41%, despite losing share because other products grew faster. Checking or savings complaints grew by 59.42%. Money-transfer complaints grew by 405.15% and nearly matched the other two product families in 2025; the January anomaly is an important contributor to this change.
+All three products increased in absolute volume. Credit-card complaints grew by 18.41%, despite losing share because other products grew faster. Checking or savings complaints grew by 59.42%. Money-transfer complaints grew by 405.15% and nearly matched the other two product families in 2025; the January concentration is an important contributor to this change.
 
 ## 5. Issue Analysis
 
@@ -248,15 +248,15 @@ Web is the dominant intake channel. Timely-response rates vary by only 0.33 perc
 
 Money-transfer complaints provide the strongest narrative coverage and would offer the broadest basis for a future text-analysis project. Availability measures only whether text exists; it does not assess content quality, representativeness, or sentiment. NLP remains outside the current MVP.
 
-## 13. Pending Product-Issue Anomaly Investigation
+## 13. Deferred Extension: January 2025 Concentration
 
-The most important unresolved signal is:
+The most important deferred research signal is the January 2025 concentration in:
 
 `Money transfer, virtual currency, or money service` → `Other transaction problem`
 
 This combination recorded 42,521 complaints in January 2025, equal to 55.09% of that month's total and 78.90% of the combination's 53,893 complaints during 2025. Before 2025, its monthly share was generally between approximately 1.5% and 2.4%.
 
-The observation supports further investigation but not a final anomaly conclusion. The next phase must define:
+The observation supports future investigation, but it is not classified as a validated anomaly and no causal explanation is assigned. A future study would need to define:
 
 - the historical reference period and baseline;
 - expected and excess complaint calculations;
@@ -265,7 +265,7 @@ The observation supports further investigation but not a final anomaly conclusio
 - whether company or submission-channel concentration explains part of the signal;
 - whether source timing, backlog, classification, or another data-process factor may be involved.
 
-No causal explanation is assigned in this report, and the anomaly section in `sql/06_business_analysis.sql` remains deliberately pending.
+This investigation remains outside the completed MVP. The corresponding section in `sql/06_business_analysis.sql` is intentionally documentary and contains no executable query.
 
 ## 14. Limitations
 
@@ -277,8 +277,6 @@ No causal explanation is assigned in this report, and the anomaly section in `sq
 - Narrative availability is not equivalent to representative or analysis-ready text.
 - The exceptional January 2025 volume materially affects annual and growth comparisons.
 
-## 15. Reproducibility and Result Artifacts
+## 15. Reproducibility
 
-The findings were generated after running the complete SQL pipeline and then executing `sql/06_business_analysis.sql` against PostgreSQL. The pipeline reconciled 525,156 raw rows to 522,381 validated mart rows after 2,775 documented exclusions; all 18 staging quality checks passed.
-
-Complete query outputs are stored locally as 15 CSV files under `private/business_analysis_results/`. The directory is excluded by `.gitignore` because the exports are provisional analytical artifacts. Section 12 has no final result table because its methodology remains intentionally unresolved.
+The findings were generated after running the complete SQL pipeline and then executing `sql/06_business_analysis.sql` against PostgreSQL. The pipeline reconciled 525,156 raw rows to 522,381 validated mart rows after 2,775 documented exclusions; all 18 staging quality checks passed. The analysis script returns result sets without creating persistent tables or views.

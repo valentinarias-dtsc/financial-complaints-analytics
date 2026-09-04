@@ -153,5 +153,5 @@ For a share-of-context reconciliation in SQL, divide each grouped count by the w
 
 - Counts use whole numbers with thousands separators and no automatic `K` or `M` abbreviation.
 - Rates use percentage format with two decimal places.
-- The hidden QA page reconciles global totals, annual totals, product totals, calendar behavior, and single-year YoY results.
+- The hidden QA page reconciles global totals, annual totals, product totals, timely-response metrics, and narrative-availability metrics.
 - Reference annual totals are 118,035 for 2023, 145,554 for 2024, and 258,792 for 2025.

@@ -17,6 +17,15 @@ No raw, staging, or audit tables are loaded into the semantic model.
 
 Power Query is limited to connection, column selection, type verification, and minor presentation adjustments. Transformation logic is not duplicated from SQL.
 
+### Refreshing from Another PostgreSQL Instance
+
+1. Open `financial_complaints_analytics.pbix` in Power BI Desktop.
+2. Open **File → Options and settings → Data source settings**.
+3. Select the PostgreSQL source and choose **Change Source**.
+4. Enter the server and database containing `mart_complaints` and `dim_calendar`.
+5. Configure credentials when prompted and select **Refresh**.
+6. Compare the refreshed global, annual, product, timely-response, and narrative values with the hidden QA page.
+
 ## Semantic Model
 
 The model uses a single active relationship:
@@ -130,7 +139,7 @@ It includes:
 - `Product` slicer;
 - Top 10 Companies by Complaint Volume;
 - High-Volume Issues;
-- High-Volume Sub Products;
+- High-Volume Sub-products;
 - Volume by Company Response to Consumer.
 
 The company visual is implemented as a table with:
@@ -155,9 +164,9 @@ Checks include:
 - timely complaint counts and response rate;
 - narrative counts and rate;
 - annual totals;
-- product totals;
-- calendar filtering;
-- YoY values under a single-year context.
+- product totals.
+
+The QA page does not contain a dedicated YoY validation visual. The YoY measure is documented above and is displayed on the Executive Overview only when a single year is selected.
 
 The QA page is retained in the file but hidden from the final report.
 
@@ -187,9 +196,9 @@ The repository includes a preview of each visible page in its default unfiltered
 - [Executive Overview](../docs/images/executive-overview.png)
 - [Company & Issue Analysis](../docs/images/company-issue-analysis.png)
 
-The previews keep the Year and Product slicers visible and exclude Power BI Desktop chrome. The hidden QA page is intentionally not included.
+The previews keep the Year and Product slicers visible in their default `All` state and exclude Power BI Desktop chrome. The hidden QA page is intentionally not included.
 
-## Deferred Analysis
+## Deferred January 2025 Research
 
 The report does not include a finalized `Fastest-Growing Issues` visual.
 
@@ -197,6 +206,6 @@ A sharp January 2025 concentration in:
 
 `Money transfer, virtual currency, or money service` → `Other transaction problem`
 
-materially affects 2025 growth comparisons. The signal is documented in `docs/business_analysis.md`, but a dedicated anomaly method is intentionally deferred beyond the MVP.
+materially affects 2025 growth comparisons. The signal is documented in `docs/business_analysis.md`, but a dedicated investigation method is intentionally deferred beyond the MVP.
 
 A future extension may add a third page focused on January 2025, product–issue growth, and potential concentration drivers.
