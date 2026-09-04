@@ -3,7 +3,8 @@
 -- Purpose: validate that stg_complaints satisfies the integrity, scope, and
 --          transformation rules established by the data audit.
 -- Scope:   verify staging outputs without modifying or repairing data.
--- Output:  a compact PASS/FAIL summary for the staging quality checks.
+-- Output:  a compact PASS/FAIL summary. Any FAIL stops the pipeline before
+--          the reporting mart is created.
 -- ============================================================================
 
 \set ON_ERROR_STOP on
@@ -15,6 +16,11 @@
 -- Each check compares an observed value with its expected value. A FAIL should
 -- be investigated in staging before building downstream reporting objects.
 
+BEGIN;
+
+CREATE TEMP TABLE quality_check_results
+ON COMMIT DROP
+AS
 WITH quality_checks AS (
 
     -- The data audit established an expected staging population of 522,381
@@ -325,5 +331,23 @@ WITH quality_checks AS (
 )
 
 SELECT *
-FROM quality_checks
+FROM quality_checks;
+
+SELECT *
+FROM quality_check_results
 ORDER BY check_name;
+
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM quality_check_results
+        WHERE status = 'FAIL'
+    ) THEN
+        RAISE EXCEPTION
+            'Staging quality checks failed. Reporting mart was not created.';
+    END IF;
+END
+$$;
+
+COMMIT;
